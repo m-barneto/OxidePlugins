@@ -1,0 +1,471 @@
+﻿using Newtonsoft.Json.Linq;
+using Oxide.Core;
+using Oxide.Core.Plugins;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using ConVar;
+using Newtonsoft.Json;
+using Oxide.Core.Libraries.Covalence;
+using UnityEngine;
+using Random = System.Random;
+using Time = Oxide.Core.Libraries.Time;
+
+
+namespace Oxide.Plugins {
+    /*  
+    X   1.  SteamID Icon 
+   -?-  2.  must be capable of using betterchat
+    X   3.  must be capable of creating joining / leaving messages for players that can be assigned per permission group
+    X   4.  must be able to place the variables in each message such as Name, ID, IP, alternative IPs, Country, Country Code, Playtime, online players, sleepers, steam aliases.
+    X   5.  must have a section dedicated to announcing new players upon joining that is separate from the standard joining message for players that aren't brand new to the server.
+    X   6.  must have a joining / leaving message portion for admin utilization that only admins can see.
+    X   7.  must have a welcome message only the joining player themselves can see instead of gbiglobal.
+    X   8.  plugin must have rotating messages that can be randomized or ordered.
+    X   9.  plugin must include a multiple auto responses to automate questions our player base might have to automate the system
+    X   10. plugin must have to 3 separate messages for when a player leaves the server VIA disconnection, kick, or ban
+    X   11. must display the players steam icon upon joining the server
+     */
+    [Info("ChatNeeds", "Mattdokn", 1.0)]
+    class ChatNeeds : RustPlugin {
+        private const string PERM_PREFIX = "chatneeds.";
+        class PlayerTracker {
+            public Dictionary<string, PlayerData> players = new Dictionary<string, PlayerData>();
+        }
+        PlayerTracker tracker;
+
+        PluginConfig config;
+
+        [PluginReference("Clans")]
+        private Plugin clans = null;
+
+        void Loaded() {
+            //loop through active players as if they just connected
+            tracker = Interface.Oxide.DataFileSystem.ReadObject<PlayerTracker>(Name);
+            for (int i = 0; i < BasePlayer.activePlayerList.Count; i++) {
+                OnPlayerConnected(BasePlayer.activePlayerList[i]);
+            }
+
+            SetupPermissions();
+            
+            if (config.AutoMessages.Count > 0) {
+                foreach (KeyValuePair<string, List<AutoMessage>> autoMessage in config.AutoMessages) {
+                    for (int i = 0; i < autoMessage.Value.Count; i++) {
+                        timer.Once(autoMessage.Value[i].StartOffset, () => {
+                            int messageIndex = 0;
+                            timer.Every(autoMessage.Value[i].Cooldown, () => {
+                                if (messageIndex >= autoMessage.Value[i].Messages.Length) messageIndex = 0;
+                                SendToAllWithPerm(autoMessage.Value[i].Messages[messageIndex], config.AutomatedMessagePermission);
+                                messageIndex += 1;
+                            });
+                        });
+                    }
+                }
+            }
+        }
+        void Unload() {
+            for (int i = 0; i < BasePlayer.activePlayerList.Count; i++) {
+                OnPlayerDisconnected(BasePlayer.activePlayerList[i], "Unloading:");
+            }
+            Interface.Oxide.DataFileSystem.WriteObject(Name, tracker);
+        }
+        void OnServerSave() {
+            Interface.Oxide.DataFileSystem.WriteObject(Name, tracker);
+        }
+        void OnNewSave(string strFilename) {
+            // Reset the wipePlaytime variables in playerdata
+            foreach (KeyValuePair<string, PlayerData> val in tracker.players) {
+                tracker.players[val.Key].WipePlaytime = 0L;
+            }
+        }
+        object OnPlayerChat(BasePlayer player, string message, Chat.ChatChannel channel) {
+            if (channel != Chat.ChatChannel.Global) return null;
+            foreach (KeyValuePair<string, List<AutoResponse>> response in config.AutoResponses) {
+                for (int i = 0; i < response.Value.Count; i++) {
+                    int matches = 0;
+                    foreach (string trigger in response.Value[i].TriggerWords) {
+                        if (message.Contains(trigger)) {
+                            matches += 1;
+                        }
+                    }
+                    if ((matches / (float)response.Value[i].TriggerWords.Length) * 100f >= response.Value[i].MatchPercent) {
+                        if (response.Value[i].ResponseIndex_Keep_this_at_zero >= response.Value[i].Responses.Length) response.Value[i].ResponseIndex_Keep_this_at_zero = 0;
+                        if (response.Value[i].SendPublicResponse) {
+                            SendToAllExcept(response.Value[i].Responses[response.Value[i].ResponseIndex_Keep_this_at_zero], null);
+                        } else {
+                            SendToPlayer(response.Value[i].Responses[response.Value[i].ResponseIndex_Keep_this_at_zero], player);
+                        }
+                        response.Value[i].ResponseIndex_Keep_this_at_zero += 1;
+                        break;
+                    }
+                }
+            }
+            return null;
+        }
+
+        void OnPlayerConnected(BasePlayer player) {
+            GroupSettings group = GetGroupSettings(GetGroupIndex(player));
+            if (group == null) return;
+            GetPlayerData(player, (steamData, countryData) => {
+                if (tracker.players.ContainsKey(player.UserIDString)) {
+                    if (!tracker.players[player.UserIDString].Ips.Contains(player.IPlayer.Address)) {
+                        tracker.players[player.UserIDString].Ips.Add(player.IPlayer.Address);
+                    }
+                    if (!tracker.players[player.UserIDString].Aliases.Contains(player.displayName)) {
+                        tracker.players[player.UserIDString].Aliases.Add(player.displayName);
+                    }
+
+                    tracker.players[player.UserIDString].CountryData = countryData;
+                    tracker.players[player.UserIDString].SteamData = steamData;
+
+                    string privateJoinMessage = GetFormattedMessage(player, tracker.players[player.UserIDString], group.PrivateJoinMessage);
+                    SendToPlayer(privateJoinMessage, player);
+
+                    string joinMessage = GetFormattedMessage(player, tracker.players[player.UserIDString], group.JoinMessage);
+                    SendToAllExcept(joinMessage, player);
+
+                    string adminJoinMessage = GetFormattedMessage(player, tracker.players[player.UserIDString], group.AdminJoinMessage);
+                    SendToAdmins(adminJoinMessage);
+                } else {
+                    tracker.players.Add(player.UserIDString, new PlayerData());
+                    tracker.players[player.UserIDString].Ips.Add(player.IPlayer.Address);
+                    tracker.players[player.UserIDString].Aliases.Add(player.displayName);
+                    tracker.players[player.UserIDString].CountryData = countryData;
+                    tracker.players[player.UserIDString].SteamData = steamData;
+
+                    string privateWelcomeMessage = GetFormattedMessage(player, tracker.players[player.UserIDString], group.PrivateNewPlayerMessage);
+                    SendToPlayer(privateWelcomeMessage, player);
+
+                    string welcomeMessage = GetFormattedMessage(player, tracker.players[player.UserIDString], group.PublicNewPlayerMessage);
+                    SendToAllExcept(welcomeMessage, player);
+
+                    string adminWelcomeMessage = GetFormattedMessage(player, tracker.players[player.UserIDString], group.AdminNewPlayerMessage);
+                    SendToAdmins(adminWelcomeMessage);
+                }
+                tracker.players[player.UserIDString].CountryData = countryData;
+                tracker.players[player.UserIDString].SteamData = steamData;
+                tracker.players[player.UserIDString].LastJoin = DateTime.Now.Ticks;
+            });
+        }
+        void OnPlayerDisconnected(BasePlayer player, string reason) {
+            //when the server quits or on plugin unload need to save the player data just like if they disconnected
+            if (!tracker.players.ContainsKey(player.UserIDString)) return;
+            long timePlayed = DateTime.Now.Ticks - tracker.players[player.UserIDString].LastJoin;
+            tracker.players[player.UserIDString].TotalPlaytime += timePlayed;
+            tracker.players[player.UserIDString].WipePlaytime += timePlayed;
+
+            GroupSettings group = GetGroupSettings(GetGroupIndex(player));
+            if (group == null) return;
+
+            if (reason.Contains("Kicked:")) {
+                string msg = GetFormattedMessage(player, tracker.players[player.UserIDString], group.KickMessage, reason);
+                rust.BroadcastChat(config.BotPrefix, msg, config.IconSteam64ID);
+            } else if (reason.Contains("Banned:")) {
+                string msg = GetFormattedMessage(player, tracker.players[player.UserIDString], group.BanMessage, reason);
+                rust.BroadcastChat(config.BotPrefix, msg, config.IconSteam64ID);
+            } else if (reason.Contains("Unloading:")) {
+                // dont do anything
+            } else {
+                string msg = GetFormattedMessage(player, tracker.players[player.UserIDString], group.LeaveMessage);
+                rust.BroadcastChat(config.BotPrefix, msg, config.IconSteam64ID);
+            }
+        }
+
+        void SendToAllWithPerm(string message, string perm) {
+            foreach (BasePlayer player in BasePlayer.activePlayerList) {
+                if (!permission.UserHasPermission(player.UserIDString, perm)) continue;
+                rust.SendChatMessage(player, config.BotPrefix, message, player.UserIDString);
+            }
+        }
+        void SendToAllExcept(string message, BasePlayer playerException) {
+            foreach (BasePlayer player in BasePlayer.activePlayerList) {
+                if (player.userID == playerException?.userID) continue;
+                rust.SendChatMessage(player, config.BotPrefix, message, player.UserIDString);
+            }
+        }
+        void SendToAdmins(string message) {
+            foreach (string admin in permission.GetUsersInGroup("admin")) {
+                rust.SendChatMessage(BasePlayer.Find(admin.Split(' ')[0]), config.BotPrefix, message, config.IconSteam64ID);
+            }
+        }
+        void SendToPlayer(string message, BasePlayer player) {
+            rust.SendChatMessage(player, config.BotPrefix, message, config.IconSteam64ID);
+        }
+
+        /*
+         * player.name          - Current username
+         * player.clantag       - Current clantag
+         * player.totalplaytime - How much time the player has spent on the server
+         * player.wipeplaytime  - How much time the player has spent on the server this wipe
+         * player.aliases       - Known usernames
+         * player.ips           - Known ips (including current one)
+         * player.id            - Steam 64 ID
+         * player.hours         - Steam hours
+         * player.countrycode   - Country code
+         * player.country       - Country name
+         * server.players       - Server player count
+         * server.sleepers      - Server sleeper count
+         */
+        string GetFormattedMessage(BasePlayer p, PlayerData data, string message, string reason = "") {
+            return message.Replace("$player.name", p.displayName)
+                          .Replace("$player.id", p.UserIDString)
+                          .Replace("$player.clantag", clans == null ? "" : clans.Call<string>("GetClanOf", p.userID))
+                          .Replace("$player.totalplaytime", string.Format("{0:c}", TimeSpan.FromTicks(data.TotalPlaytime)))
+                          .Replace("$player.wipeplaytime", string.Format("{0:c}", TimeSpan.FromTicks(data.WipePlaytime)))
+                          .Replace("$player.hours", data.SteamData.Hours)
+                          .Replace("$player.aliases", PlayerData.AliasesToString(ref data.Aliases))
+                          .Replace("$player.ips", PlayerData.IpsToString(ref data.Ips))
+                          .Replace("$player.countrycode", data.CountryData.CountryCode == null ? "unknown" : data.CountryData.CountryCode)
+                          .Replace("$player.country", data.CountryData.Country == null ? "unknown" : data.CountryData.Country)
+                          .Replace("$server.players", BasePlayer.activePlayerList.Count.ToString())
+                          .Replace("$server.sleepers", BasePlayer.sleepingPlayerList.Count.ToString())
+                          .Replace("$reason", reason);
+        }
+
+        void GetPlayerData(BasePlayer player, Action<SteamData, CountryData> callback) {
+            GetCountryData(player, (countryData) => {
+                GetSteamData(player, (steamData) => {
+                    callback(steamData, countryData);
+                });
+            });
+        }
+        void GetCountryData(BasePlayer player, Action<CountryData> callback) {
+            string requestUrl = string.Format("http://api.ipstack.com/{0}?access_key={1}", player.IPlayer.Address, config.IPStackAPIKey);
+            webrequest.Enqueue(requestUrl, "", (httpCode, response) => {
+                if (httpCode != 200) {
+                    PrintError($"Unable to fetch user location data, error code: {httpCode}");
+                    callback(new CountryData());
+                }
+                CountryData data = new CountryData();
+                Newtonsoft.Json.Linq.JObject json = Newtonsoft.Json.Linq.JObject.Parse(response);
+                data.Country = (string)json["country_name"];
+                data.CountryCode = (string)json["country_code"];
+                callback(data);
+            }, this, Core.Libraries.RequestMethod.GET, null, 10f);
+        }
+        void GetSteamData(BasePlayer player, Action<SteamData> callback) {
+            string requestUrl = string.Format("http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key={0}&steamid={1}&format=json", config.SteamAPIKey, player.UserIDString);
+            webrequest.Enqueue(requestUrl, "", (httpCode, response) => {
+                if (httpCode != 200) {
+                    PrintError($"Unable to fetch steam data, error code: {httpCode}");
+                    callback(new SteamData());
+                }
+                SteamData data = new SteamData();
+                JObject json = JObject.Parse(response);
+                JToken games = json["response"]?["game_count"];
+                JToken gameTime = json.SelectToken("$...games[?(@.appid == 252490)].playtime_forever", false);
+                if (games == null || gameTime == null) {
+                    data.Hours = null;
+                } else {
+                    data.Hours = ((int)((int)gameTime * 0.01666666f)).ToString();
+                }
+                callback(data);
+            }, this);
+        }
+
+        List<string> RegisterPermissions<T>(Dictionary<string, List<T>> dict) {
+            List<string> regPerms = new List<string>();
+            foreach (var val in dict) {
+                permission.RegisterPermission(PERM_PREFIX + val.Key, this);
+                regPerms.Add(PERM_PREFIX + val.Key);
+            }
+            return regPerms;
+        }
+        List<string> unusedPerms = null;
+        void SetupPermissions() {
+            unusedPerms = permission.GetPermissions().AsParallel().Where(perm => perm.Split('.')[0].Equals("chatneeds")).ToList();
+
+            foreach (var item in RegisterPermissions(config.AutoMessages)) unusedPerms.Remove(item);
+            foreach (var item in RegisterPermissions(config.AutoResponses)) unusedPerms.Remove(item);
+            if (unusedPerms.Count > 0) {
+                PrintWarning($"Found {unusedPerms.Count} registered permissions that are unused. Use command \"cleanperms\" to remove them.");
+            }
+        }
+        [ConsoleCommand("cleanperms")]
+        private void CleanPerms(BasePlayer player, string command, string[] args) {
+            if (player == null || player.IsAdmin) {
+
+            }
+        }
+
+        private class CountryData {
+            public string Country = null;
+            public string CountryCode = null;
+        }
+        private class SteamData {
+            public string Hours = null;
+        }
+        private class PlayerData {
+            public long TotalPlaytime = 0L;
+            public long WipePlaytime = 0L;
+            public long LastJoin = 0L;
+            public List<string> Ips = new List<string>();
+            public List<string> Aliases = new List<string>();
+            public CountryData CountryData = null;
+            public SteamData SteamData = null;
+            public static string AliasesToString(ref List<string> aliases) {
+                string aliasesString = "[";
+                foreach (string alias in aliases) {
+                    aliasesString += alias + ", ";
+                }
+                return aliasesString + "]";
+            }
+            public static string IpsToString(ref List<string> ips) {
+                string ipsString = "[";
+                foreach (string ip in ips) {
+                    ipsString += ip + ", ";
+                }
+                return ipsString + "]";
+            }
+            //TODO: Cache country data to save on api requests
+        }
+
+        private class AutoMessage {
+            public string[] Messages;
+            public float Cooldown;
+            public float StartOffset;
+        }
+        private class AutoResponse {
+            public bool SendPublicResponse;
+            public float MatchPercent;
+            public string[] TriggerWords;
+            public string[] Responses;
+            public int ResponseIndex_Keep_this_at_zero = 0;
+        }
+
+        private class GroupSettings {
+            public string PermissionID = "";
+
+            public string PublicNewPlayerMessage = "";
+            public string PrivateNewPlayerMessage = "";
+            public string AdminNewPlayerMessage = "";
+
+            public string JoinMessage = "";
+            public string PrivateJoinMessage = "";
+            public string AdminJoinMessage = "";
+
+            public string LeaveMessage = "";
+
+            public string KickMessage = "";
+            public string BanMessage = "";
+        }
+        int GetGroupIndex(BasePlayer player) {
+            int groupIndex = -1;
+            List<string> playerGroups = permission.GetUserPermissions(player.UserIDString).ToList<string>();
+            for (int i = config.GroupMessages.Count - 1; i >= 0; i--) {
+                if (playerGroups.Contains(config.GroupMessages[i].PermissionID)) {
+                    groupIndex = i;
+                    break;
+                }
+            }
+            return groupIndex;
+        }
+        GroupSettings GetGroupSettings(int group) {
+            if (group == -1) return null;
+            return config.GroupMessages[group];
+        }
+
+        private class PluginConfig {
+            public string BotPrefix;
+            public string IPStackAPIKey;
+            public string SteamAPIKey;
+            public string IconSteam64ID;
+            public List<GroupSettings> GroupMessages;
+            public string AutomatedMessagePermission;
+            public Dictionary<string, List<AutoMessage>> AutoMessages;
+            public Dictionary<string, List<AutoResponse>> AutoResponses;
+        }
+        private PluginConfig GetDefaultConfig() {
+            return new PluginConfig {
+                BotPrefix = "<color=#363636>[</color><color=#ce422b>ChatNeeds</color><color=#363636>]</color><color=#000000>:</color>",
+                IPStackAPIKey = "4f15149471039e1190732d743dcbd5c4",
+                SteamAPIKey = "CC7054C8D364698E2EE3ADDC866DB631",
+                IconSteam64ID = "0",
+                GroupMessages = new List<GroupSettings>() {
+                    new GroupSettings() {
+                        PermissionID = "default",
+                        PublicNewPlayerMessage = "Please welcome $player.name($player.id) from $player.country($player.countrycode) with $player.hours hours!",
+                        PrivateNewPlayerMessage = "Welcome! Use /info for more information about our server.",
+                        AdminNewPlayerMessage = "",
+                        JoinMessage = "$player.name has connected to the server.",
+                        PrivateJoinMessage = "Welcome back $player.name!",
+                        AdminJoinMessage = "",
+                        LeaveMessage = "$player.name has disconnected from the server.",
+                        KickMessage = "$player.name has been kicked from the server.",
+                        BanMessage = "$player.name has been banned from the server. <color=#FF0000>F</color>"
+                    },
+                    new GroupSettings() {
+                        PermissionID = "admin",
+                        PrivateJoinMessage = "Welcome aboard captain, all systems online.",
+                        PrivateNewPlayerMessage = "Welcome aboard captain."
+                    }
+                },
+                AutoMessages = new Dictionary<string, List<AutoMessage>>() {
+                    {
+                        "automsg1",
+                        new List<AutoMessage>() {
+                            new AutoMessage() {
+                                Messages = new string[] { "<color=#454545>Automated message that started it's loop on plugin load</color>", "Rotating message 1", "Rotating message 2" },
+                                Cooldown = 60f,
+                                StartOffset = 0f
+                            },
+                            new AutoMessage() {
+                                Messages = new string[] { "Automated message that started it's loop 5 minutes after plugin load" },
+                                Cooldown = 60f,
+                                StartOffset = 600f
+                            }
+                        }
+                    },
+                    {
+                        "automsg2",
+                        new List<AutoMessage>() {
+                            new AutoMessage() {
+                                Messages = new string[] { "<color=#454545>Automated message that started it's loop on plugin load</color>", "Rotating message 1", "Rotating message 2" },
+                                Cooldown = 60f,
+                                StartOffset = 0f
+                            },
+                            new AutoMessage() {
+                                Messages = new string[] { "Automated message that started it's loop 5 minutes after plugin load" },
+                                Cooldown = 60f,
+                                StartOffset = 600f
+                            }
+                        }
+                    }
+                },
+                AutoResponses = new Dictionary<string, List<AutoResponse>>() {
+                    {
+                        "responsepermission1",
+                        new List<AutoResponse>() {
+                            new AutoResponse() {
+                            SendPublicResponse = true,
+                            MatchPercent = 30f,
+                            TriggerWords = new string[] { "help", "how", "tp", "tpr", "tpa", "teleport"},
+                            Responses = new string[] { "To teleport to another player, use <color=#451010>/tpr (player)</color>", "Teleporting is easy, use <color=#451010>/tpr (player)</color> in order to send a tp request to another player!" }
+                            },
+                            new AutoResponse() {
+                                SendPublicResponse = false,
+                                MatchPercent = 30f,
+                                TriggerWords = new string[] { "private", "message" },
+                                Responses = new string[] { "This is a private response to the player, this is not shown in public chat." }
+                            }
+                        }
+                    }
+                }
+            };
+        }
+        protected override void LoadDefaultConfig() {
+            Config.WriteObject(GetDefaultConfig(), true);
+        }
+        protected override void LoadConfig() {
+            base.LoadConfig();
+            config = Config.ReadObject<PluginConfig>();
+            if (config == null) {
+                PrintWarning("Loading default config.");
+                LoadDefaultConfig();
+            }
+        }
+        protected override void SaveConfig() => Config.WriteObject(config);
+    }
+}

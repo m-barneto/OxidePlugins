@@ -1,0 +1,222 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{535406E4-0B35-4624-9CC1-50481BC757E3}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>OxidePlugins</RootNamespace>
+    <AssemblyName>OxidePlugins</AssemblyName>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Aimbotter.cs" />
+    <Compile Include="BuyableHeli.cs" />
+    <Compile Include="ClanPermissions.cs" />
+    <Compile Include="HealthySpawn.cs" />
+    <Compile Include="InstantLoot.cs" />
+    <Compile Include="DiscordReminder.cs" />
+    <Compile Include="FreePickup.cs" />
+    <Compile Include="NotMine\SmartChatBot.cs" />
+    <Compile Include="Overpowered.cs" />
+    <Compile Include="Placeables.cs" />
+    <Compile Include="Helipad.cs" />
+    <Compile Include="NoKeycards.cs" />
+    <None Include="ChatNeeds.cs.disabled" />
+    <Compile Include="RepRewards.cs" />
+    <Compile Include="SimpleArena.cs" />
+    <Compile Include="Welcomer.cs" />
+    <Compile Include="PluginTemplate.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="NotMine\ZLevelsRemastered.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>Dlls\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.BurstCloth">
+      <HintPath>Dlls\Facepunch.BurstCloth.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Console">
+      <HintPath>Dlls\Facepunch.Console.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.GoogleSheets">
+      <HintPath>Dlls\Facepunch.GoogleSheets.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Input">
+      <HintPath>Dlls\Facepunch.Input.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Network">
+      <HintPath>Dlls\Facepunch.Network.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Raknet">
+      <HintPath>Dlls\Facepunch.Raknet.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Rcon">
+      <HintPath>Dlls\Facepunch.Rcon.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Skeleton">
+      <HintPath>Dlls\Facepunch.Skeleton.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Sqlite">
+      <HintPath>Dlls\Facepunch.Sqlite.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.SteamNetworking">
+      <HintPath>Dlls\Facepunch.SteamNetworking.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.System">
+      <HintPath>Dlls\Facepunch.System.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.Unity">
+      <HintPath>Dlls\Facepunch.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Facepunch.UnityEngine">
+      <HintPath>Dlls\Facepunch.UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="Newtonsoft.Json, Version=6.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>Dlls\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.Core">
+      <HintPath>Dlls\Oxide.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.CSharp">
+      <HintPath>Dlls\Oxide.CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.MySql">
+      <HintPath>Dlls\Oxide.MySql.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.References">
+      <HintPath>Dlls\Oxide.References.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.Rust">
+      <HintPath>Dlls\Oxide.Rust.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.SQLite">
+      <HintPath>Dlls\Oxide.SQLite.dll</HintPath>
+    </Reference>
+    <Reference Include="Oxide.Unity">
+      <HintPath>Dlls\Oxide.Unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Data">
+      <HintPath>Dlls\Rust.Data.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Demo">
+      <HintPath>Dlls\Rust.Demo.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Global">
+      <HintPath>Dlls\Rust.Global.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Harmony">
+      <HintPath>Dlls\Rust.Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Localization">
+      <HintPath>Dlls\Rust.Localization.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Platform.Common">
+      <HintPath>Dlls\Rust.Platform.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.Platform.Steam">
+      <HintPath>Dlls\Rust.Platform.Steam.dll</HintPath>
+    </Reference>
+    <Reference Include="Rust.World">
+      <HintPath>Dlls\Rust.World.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Buffers, Version=4.0.3.0, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Buffers.dll</HintPath>
+    </Reference>
+    <Reference Include="System.ComponentModel.Composition" />
+    <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Configuration.Install" />
+    <Reference Include="System.Design" />
+    <Reference Include="System.Diagnostics.StackTrace, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Diagnostics.StackTrace.dll</HintPath>
+    </Reference>
+    <Reference Include="System.DirectoryServices" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Drawing.Design" />
+    <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Globalization.Extensions, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Globalization.Extensions.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Compression, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.IO.Compression.dll</HintPath>
+    </Reference>
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="System.Memory, Version=4.0.1.1, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Memory.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Net.Http, Version=4.2.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Net.Http.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Numerics.Vectors">
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Numerics.Vectors.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime, Version=4.1.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Runtime.Serialization.Formatters.Soap" />
+    <Reference Include="System.Runtime.Serialization.Xml, Version=4.1.3.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Runtime.Serialization.Xml.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Security" />
+    <Reference Include="System.ServiceModel.Internals, Version=4.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.ServiceModel.Internals.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Transactions" />
+    <Reference Include="System.Web" />
+    <Reference Include="System.Web.ApplicationServices" />
+    <Reference Include="System.Web.Services" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Xml.XPath.XDocument, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\Games\RustServer\RustDedicated_Data\Managed\System.Xml.XPath.XDocument.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>Dlls\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>Dlls\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.PhysicsModule">
+      <HintPath>Dlls\UnityEngine.PhysicsModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
